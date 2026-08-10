@@ -22,7 +22,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: devboard-backend
-          image: CHANGE_ME_DOCKERHUB_USERNAME/devboard-backend:CHANGE_ME # bumped in CI via yq, see workflow-replacements/deploy.yml
+          image: saadhussain07/devboard-backend:latest # bumped in CI via yq once pipeline runs, see workflow-replacements/deploy.yml
           ports:
             - containerPort: 8080
           securityContext:

@@ -33,10 +33,10 @@ metadata:
 spec:
   ingressClassName: nginx
   tls:
-    - hosts: ["api.devboard.CHANGE_ME.sslip.io"]
+    - hosts: ["api.devboard.15-252-151-45.sslip.io"]
       secretName: devboard-api-tls
   rules:
-    - host: "api.devboard.CHANGE_ME.sslip.io"
+    - host: "api.devboard.15-252-151-45.sslip.io"
       http:
         paths:
           - path: /
