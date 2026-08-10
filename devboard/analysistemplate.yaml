@@ -1,0 +1,39 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: success-rate-and-latency
+  namespace: devboard
+spec:
+  args:
+    - name: service-name
+      value: devboard-backend-canary
+  metrics:
+    - name: success-rate
+      interval: 30s
+      count: 3
+      # If success rate drops below 95% during the canary window, this
+      # metric fails. 3 consecutive failures -> Rollouts auto-aborts and
+      # reverts 100% traffic to the stable ReplicaSet. This IS the
+      # "change failure rate / MTTR" automation the checklist asks for.
+      successCondition: result[0] >= 0.95
+      failureLimit: 2
+      provider:
+        prometheus:
+          address: http://kube-prometheus-stack-prometheus.monitoring.svc:9090
+          query: |
+            sum(rate(http_requests_total{service="{{ args.service-name }}", status!~"5.."}[2m]))
+            /
+            sum(rate(http_requests_total{service="{{ args.service-name }}"}[2m]))
+
+    - name: p95-latency
+      interval: 30s
+      count: 3
+      successCondition: result[0] <= 0.5
+      failureLimit: 2
+      provider:
+        prometheus:
+          address: http://kube-prometheus-stack-prometheus.monitoring.svc:9090
+          query: |
+            histogram_quantile(0.95,
+              sum(rate(http_request_duration_seconds_bucket{service="{{ args.service-name }}"}[2m])) by (le)
+            )

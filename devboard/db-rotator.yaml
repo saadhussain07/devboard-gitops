@@ -1,0 +1,98 @@
+# --- In-cluster Postgres password rotation ---
+# Runs on a schedule: generates a new password, ALTERs the live Postgres
+# role, then writes the new value to Secrets Manager. ESO's refreshInterval
+# (15m, see external-secret.yaml) picks it up and syncs it into the pods —
+# no manual redeploy needed when a rotation happens.
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: db-rotator-sa
+  namespace: devboard
+  annotations:
+    eks.amazonaws.com/role-arn: "REPLACE_WITH_terraform_output_rotator_role_arn"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: db-rotator-script
+  namespace: devboard
+data:
+  rotate.py: |
+    import json, os, secrets, string, sys
+    import boto3
+    import psycopg2
+
+    SECRET_NAME = os.environ["SECRET_NAME"]
+    REGION      = os.environ.get("AWS_REGION", "ap-south-1")
+    DB_HOST     = os.environ.get("DB_HOST", "postgres-service.devboard.svc.cluster.local")
+    DB_USER     = os.environ.get("DB_USER", "postgres")
+
+    sm = boto3.client("secretsmanager", region_name=REGION)
+
+    current = json.loads(sm.get_secret_value(SecretId=SECRET_NAME)["SecretString"])
+    db_name = current["POSTGRES_DB"]
+    old_password = current["POSTGRES_PASSWORD"]
+
+    alphabet = string.ascii_letters + string.digits
+    new_password = "".join(secrets.choice(alphabet) for _ in range(24))
+
+    conn = psycopg2.connect(
+        host=DB_HOST, dbname=db_name, user=DB_USER, password=old_password, connect_timeout=10,
+    )
+    conn.autocommit = True
+    with conn.cursor() as cur:
+        # identifiers can't be parameterized -> DB_USER is our own env var, not user input
+        cur.execute(f"ALTER ROLE {DB_USER} WITH PASSWORD %s", (new_password,))
+    conn.close()
+
+    sm.put_secret_value(
+        SecretId=SECRET_NAME,
+        SecretString=json.dumps({"POSTGRES_DB": db_name, "POSTGRES_PASSWORD": new_password}),
+    )
+
+    print(f"Rotated password for role '{DB_USER}' and updated {SECRET_NAME}", file=sys.stderr)
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: db-password-rotator
+  namespace: devboard
+spec:
+  schedule: "0 3 * * *" # daily at 3am — adjust freely, doesn't need to be nightly
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        spec:
+          serviceAccountName: db-rotator-sa
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+          containers:
+            - name: rotate
+              image: python:3.12-slim
+              command:
+                - sh
+                - -c
+                - |
+                  pip install --no-cache-dir --quiet boto3 psycopg2-binary && \
+                  python /scripts/rotate.py
+              env:
+                - name: SECRET_NAME
+                  value: "devboard-eks/devboard-db" # matches terraform output db_secret_name
+                - name: AWS_REGION
+                  value: "ap-south-1"
+              volumeMounts:
+                - name: script
+                  mountPath: /scripts
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: false # pip install needs to write; acceptable for a short-lived rotation job
+                capabilities:
+                  drop: ["ALL"]
+          volumes:
+            - name: script
+              configMap:
+                name: db-rotator-script

@@ -1,0 +1,63 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: devboard-backend
+  namespace: devboard
+spec:
+  replicas: 4
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      app: devboard-backend
+  template:
+    metadata:
+      labels:
+        app: devboard-backend
+    spec:
+      # Non-root, read-only rootfs, dropped capabilities — same posture
+      # enforced at the pod level as at the cluster/node level.
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: devboard-backend
+          image: CHANGE_ME_DOCKERHUB_USERNAME/devboard-backend:CHANGE_ME # bumped in CI via yq, see workflow-replacements/deploy.yml
+          ports:
+            - containerPort: 8080
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          envFrom:
+            - secretRef:
+                name: devboard-secrets # synced by External Secrets Operator, same name the original k8s/secrets.yml used
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { cpu: 500m, memory: 256Mi }
+          readinessProbe:
+            httpGet: { path: /healthz, port: 8080 }
+            initialDelaySeconds: 5
+          livenessProbe:
+            httpGet: { path: /healthz, port: 8080 }
+            initialDelaySeconds: 15
+  strategy:
+    canary:
+      canaryService: devboard-backend-canary
+      stableService: devboard-backend-stable
+      steps:
+        - setWeight: 20
+        - pause: { duration: 60s }
+        - analysis:
+            templates:
+              - templateName: success-rate-and-latency
+        - setWeight: 50
+        - pause: { duration: 60s }
+        - analysis:
+            templates:
+              - templateName: success-rate-and-latency
+        - setWeight: 100
+      trafficRouting:
+        nginx:
+          stableIngress: devboard-backend-ingress

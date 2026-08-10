@@ -1,0 +1,48 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: devboard-backend-stable
+  namespace: devboard
+spec:
+  selector:
+    app: devboard-backend
+  ports:
+    - port: 8080
+      targetPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: devboard-backend-canary
+  namespace: devboard
+spec:
+  selector:
+    app: devboard-backend
+  ports:
+    - port: 8080
+      targetPort: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: devboard-backend-ingress
+  namespace: devboard
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/canary: "true" # Rollouts controller manages weight on a paired canary ingress
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts: ["api.devboard.CHANGE_ME.sslip.io"]
+      secretName: devboard-api-tls
+  rules:
+    - host: "api.devboard.CHANGE_ME.sslip.io"
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: devboard-backend-stable
+                port:
+                  number: 8080
