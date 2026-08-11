@@ -16,17 +16,14 @@ spec:
         app: devboard-frontend
     spec:
       containers:
-      - name: devboard-frontend
-        image: trainwithshubham/devboard-frontend:latest
-        ports:
-        - containerPort: 4173
-        resources:
-          requests: # min needed
-            cpu: 10m
-            memory: 64Mi
-          limits: # max usable
-            cpu: 250m
-            memory: 128Mi
-
-
-
+        - name: devboard-frontend
+          image: saadhussain07/devboard-frontend:c91e37caa2e42beebd910bd60e640c8cea90d5a0
+          ports:
+            - containerPort: 4173
+          resources:
+            requests: # min needed
+              cpu: 10m
+              memory: 64Mi
+            limits: # max usable
+              cpu: 250m
+              memory: 128Mi
