@@ -18,6 +18,7 @@ spec:
       # enforced at the pod level as at the cluster/node level.
       securityContext:
         runAsNonRoot: true
+        runAsUser: 65532
         seccompProfile:
           type: RuntimeDefault
       containers:
