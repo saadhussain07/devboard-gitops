@@ -18,7 +18,7 @@ spec:
       # enforced at the pod level as at the cluster/node level.
       securityContext:
         runAsNonRoot: true
-        runAsUser: 65532
+        runAsUser: 65532 # DHI/distroless images use numeric nonroot UID 65532 - k8s can't verify a named user like 'nonroot'
         seccompProfile:
           type: RuntimeDefault
       containers:
@@ -36,6 +36,18 @@ spec:
                 name: devboard-configmap
             - secretRef:
                 name: devboard-secrets # synced by External Secrets Operator, same name the original k8s/secrets.yml used
+          env:
+            # Backend expects a single POSTGRES_URL DSN (see backend/main.go
+            # line 47), not separate POSTGRES_USER/PASSWORD/DB vars - those
+            # come in via envFrom above, composed into the DSN here using
+            # k8s $(VAR) substitution. Without this, it silently falls back
+            # to its hardcoded localhost default and never connects.
+            - name: POSTGRES_HOST
+              value: postgres
+            - name: POSTGRES_PORT
+              value: "5432"
+            - name: POSTGRES_URL
+              value: "postgres://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@$(POSTGRES_HOST):$(POSTGRES_PORT)/$(POSTGRES_DB)?sslmode=disable"
           resources:
             requests: { cpu: 100m, memory: 128Mi }
             limits: { cpu: 500m, memory: 256Mi }
