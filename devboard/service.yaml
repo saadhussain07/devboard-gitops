@@ -29,7 +29,13 @@ metadata:
   namespace: devboard
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
-    nginx.ingress.kubernetes.io/canary: "true" # Rollouts controller manages weight on a paired canary ingress
+    # NOTE: no nginx.ingress.kubernetes.io/canary annotation here on purpose.
+    # This is the STABLE ingress referenced by rollout.yaml's
+    # trafficRouting.nginx.stableIngress - Argo Rollouts itself creates a
+    # separate, ephemeral canary Ingress automatically during each rollout
+    # step. Manually marking this one as canary routes 0% traffic to it
+    # (nginx canary default weight), which is what caused both the 404s
+    # and the earlier ACME HTTP01 challenge failures.
 spec:
   ingressClassName: nginx
   tls:
