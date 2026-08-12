@@ -23,7 +23,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: devboard-backend
-          image: saadhussain07/devboard-backend:c91e37caa2e42beebd910bd60e640c8cea90d5a0 # bumped in CI via yq once pipeline runs, see workflow-replacements/deploy.yml
+          image: saadhussain07/devboard-backend:this-tag-does-not-exist # bumped in CI via yq once pipeline runs, see workflow-replacements/deploy.yml
           ports:
             - containerPort: 8080
           securityContext:
