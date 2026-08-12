@@ -50,7 +50,7 @@ spec:
               value: "postgres://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@$(POSTGRES_HOST):$(POSTGRES_PORT)/$(POSTGRES_DB)?sslmode=disable"
           resources:
             requests: {cpu: 100m, memory: 128Mi}
-            limits: {cpu: 500m, memory: 256Mi}
+            limits: {cpu: 501m, memory: 256Mi}
           readinessProbe:
             httpGet: {path: /health, port: 8080}
             initialDelaySeconds: 5
