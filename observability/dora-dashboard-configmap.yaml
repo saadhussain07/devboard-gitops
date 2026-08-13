@@ -1,0 +1,75 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dora-dashboard
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  dora-dashboard.json: |
+    {
+      "title": "DevBoard - DORA Metrics",
+      "timezone": "browser",
+      "schemaVersion": 39,
+      "refresh": "30s",
+      "time": { "from": "now-7d", "to": "now" },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Deploy Frequency (last 7 days)",
+          "type": "stat",
+          "gridPos": { "h": 6, "w": 8, "x": 0, "y": 0 },
+          "targets": [
+            { "expr": "sum(increase(devboard_deploy_total[7d]))", "legendFormat": "deploys" }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "Deploy Lead Time (seconds, avg)",
+          "type": "stat",
+          "gridPos": { "h": 6, "w": 8, "x": 8, "y": 0 },
+          "targets": [
+            { "expr": "avg(devboard_deploy_lead_time_seconds)", "legendFormat": "lead time" }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "Rollout Health (current phase)",
+          "type": "stat",
+          "gridPos": { "h": 6, "w": 8, "x": 16, "y": 0 },
+          "targets": [
+            { "expr": "rollout_info{name=\"devboard-backend\"}", "legendFormat": "{{phase}}" }
+          ]
+        },
+        {
+          "id": 4,
+          "title": "Deploy Timeline",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 24, "x": 0, "y": 6 },
+          "targets": [
+            { "expr": "devboard_deploy_timestamp_seconds", "legendFormat": "deploy {{instance}}" }
+          ]
+        },
+        {
+          "id": 5,
+          "title": "Change Failure Rate - Rollout Phase Over Time",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 24, "x": 0, "y": 14 },
+          "targets": [
+            { "expr": "rollout_phase{name=\"devboard-backend\"}", "legendFormat": "{{phase}}" }
+          ]
+        },
+        {
+          "id": 6,
+          "title": "Backend Request Success Rate (via ingress)",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 24, "x": 0, "y": 22 },
+          "targets": [
+            {
+              "expr": "sum(rate(nginx_ingress_controller_requests{ingress=\"devboard-backend-ingress\", status!~\"5..\"}[5m])) / sum(rate(nginx_ingress_controller_requests{ingress=\"devboard-backend-ingress\"}[5m]))",
+              "legendFormat": "success rate"
+            }
+          ]
+        }
+      ]
+    }

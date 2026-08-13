@@ -1,0 +1,63 @@
+# Goal: Deploy the built images from CI once the CI workflow succeeded
+#
+# CHANGED from original: this used to `docker compose pull && up -d` on a
+# self-hosted VM — no k8s, no ArgoCD, no rollback, no deploy history beyond
+# GitHub's own run log. Now it bumps the image tag in the gitops repo;
+# ArgoCD (already watching that repo) auto-syncs it onto EKS via Argo
+# Rollouts canary. This single change is what actually closes checklist
+# items 1-3 (deploy frequency/history, MTTR/rollback, progressive delivery)
+# — none of those are possible while deploys go straight to a VM.
+name: CD
+
+on:
+  workflow_call:
+
+jobs:
+  update-gitops:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout gitops repo
+        uses: actions/checkout@v7
+        with:
+          repository: ${{ vars.REPO_ORG }}/devboard-gitops
+          token: ${{ secrets.GITOPS_REPO_PAT }}
+          path: gitops
+
+      - name: Install yq
+        run: |
+          sudo curl -sSL -o /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Bump backend + frontend image tags
+        run: |
+          cd gitops/devboard
+          yq -i '.spec.template.spec.containers[0].image = "${{ vars.DOCKERHUB_USERNAME }}/devboard-backend:${{ github.sha }}"' rollout.yaml
+          yq -i '(.spec.template.spec.containers[] | select(.name == "devboard-frontend") | .image) = "${{ vars.DOCKERHUB_USERNAME }}/devboard-frontend:${{ github.sha }}"' frontend-deployment.yaml
+
+      - name: Commit deploy event
+        run: |
+          cd gitops
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add .
+          git commit -m "deploy: devboard@${{ github.sha }}" \
+            -m "commit_sha=${{ github.sha }}" \
+            -m "triggered_by=${{ github.actor }}" \
+            -m "deployed_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            || echo "nothing to commit"
+          git push
+
+      - name: Push deploy metrics to Prometheus (DORA: deploy frequency + lead time)
+        run: |
+          COMMIT_TIME=$(date -u -d "${{ github.event.head_commit.timestamp }}" +%s 2>/dev/null || date -u +%s)
+          NOW=$(date -u +%s)
+          LEAD_TIME=$((NOW - COMMIT_TIME))
+          cat <<EOF | curl -sk --data-binary @- https://pushgateway.devboard.15-252-151-45.sslip.io/metrics/job/devboard_deploy/instance/${{ github.sha }}
+          # TYPE devboard_deploy_timestamp_seconds gauge
+          devboard_deploy_timestamp_seconds $NOW
+          # TYPE devboard_deploy_lead_time_seconds gauge
+          devboard_deploy_lead_time_seconds $LEAD_TIME
+          # TYPE devboard_deploy_total counter
+          devboard_deploy_total 1
+          EOF
+        continue-on-error: true # never block a real deploy over a metrics push

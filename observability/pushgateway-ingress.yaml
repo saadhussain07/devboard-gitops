@@ -1,0 +1,23 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: pushgateway-ingress
+  namespace: monitoring
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts: ["pushgateway.devboard.15-252-151-45.sslip.io"]
+      secretName: pushgateway-tls
+  rules:
+    - host: "pushgateway.devboard.15-252-151-45.sslip.io"
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: pushgateway-prometheus-pushgateway
+                port:
+                  number: 9091
