@@ -44,13 +44,13 @@ Every push to `master` in the app repo runs `devsecops.yml`: build → scan → 
 
 Each successful deploy also pushes a timestamped metric (`devboard_deploy_total`) to a Prometheus pushgateway, so deploy frequency and lead time are numbers on a dashboard 📊, not a claim.
 
-![CI pipeline run](docs/screenshots/ci-pipeline-run.png)
+![CI pipeline run](docs/screenshots/01-ci-pipeline-run.png)
 *devsecops.yml — full pipeline green, deploy → update-gitops feeding into ArgoCD.*
 
-![Grafana DORA dashboard](docs/screenshots/grafana-dora-dashboard-overview.png)
+![Grafana DORA dashboard](docs/screenshots/02-grafana-dora-dashboard.png)
 *Deploy Frequency and Rollout Health panels, backed by live cluster data.*
 
-![Prometheus deploy metric](docs/screenshots/prometheus-deploy-metric.png)
+![Prometheus deploy metric](docs/screenshots/03-prometheus-deploy-metric.png)
 *Raw `devboard_deploy_total` series in Prometheus — the metric behind the dashboard.*
 
 ---
@@ -61,13 +61,13 @@ The backend deploys through **Argo Rollouts**, not a plain Deployment. [`analysi
 
 Rollout phases (`Progressing`, `Paused`, `Completed`, `Error`, `Abort`, `Timeout`) are exported and tracked over time, so a failed rollout is visible on a dashboard, not just in a terminal someone happened to be watching.
 
-![Rollout history restored](docs/screenshots/rollout-history-restored.png)
+![Rollout history restored](docs/screenshots/04-rollout-history-restored.png)
 *A rollout reaching a stable, fully-available state after a prior rollback.*
 
-![Grafana change failure rate](docs/screenshots/grafana-deploy-timeline-cfr.png)
+![Grafana change failure rate](docs/screenshots/05-grafana-change-failure-rate.png)
 *Change Failure Rate — Rollout Phase Over Time, plotted from real rollout events.*
 
-![Backend success rate](docs/screenshots/grafana-backend-success-rate.png)
+![Backend success rate](docs/screenshots/06-grafana-backend-success-rate.png)
 *Backend Request Success Rate via ingress, correlated with rollout activity.*
 
 ---
@@ -78,10 +78,10 @@ Rollout phases (`Progressing`, `Paused`, `Completed`, `Error`, `Abort`, `Timeout
 
 This was watched live with `kubectl get rollout devboard-backend -n devboard -w` during an actual deploy, not just read off the YAML.
 
-![Rollout image digest, pods running](docs/screenshots/rollout-image-digest-pods-running.png)
+![Rollout image digest, pods running](docs/screenshots/07-rollout-image-digest-pods.png)
 *Backend pods running the digest-pinned image from the current rollout.*
 
-![Prometheus ingress canary metrics](docs/screenshots/prometheus-ingress-canary-metrics.png)
+![Prometheus ingress canary metrics](docs/screenshots/08-prometheus-canary-metrics.png)
 *`nginx_ingress_controller_requests` labeled by the canary ingress, confirming the split is real traffic, not just config.*
 
 ---
@@ -92,13 +92,13 @@ This was watched live with `kubectl get rollout devboard-backend -n devboard -w`
 
 Trivy runs inside the `docker-checks` job in the app repo's CI and **fails the pipeline** on high/critical findings 🚨 — it's a gate, not a report nobody reads.
 
-![Rollout securityContext](docs/screenshots/rollout-securitycontext-health-check.png)
+![Rollout securityContext](docs/screenshots/09-rollout-securitycontext.png)
 *securityContext block in rollout.yaml — nonroot UID, seccomp, and a live health check against the deployed backend.*
 
-![Rollout containerPort + securityContext](docs/screenshots/rollout-containerport-securitycontext.png)
+![Rollout containerPort + securityContext](docs/screenshots/10-rollout-container-hardening.png)
 *Container-level hardening: readOnlyRootFilesystem, no privilege escalation, all capabilities dropped.*
 
-![OWASP ZAP baseline scan](docs/screenshots/zap-baseline-scan.png)
+![OWASP ZAP baseline scan](docs/screenshots/11-zap-baseline-scan.png)
 *ZAP baseline scan from the dast-scan CI job — passing checks against the live app.*
 
 ---
@@ -107,10 +107,10 @@ Trivy runs inside the `docker-checks` job in the app repo's CI and **fails the p
 
 Both images are built, pushed, and **signed with Cosign** ✍️ in the `docker-push / build-push-sign` matrix job, with an SBOM generated alongside each build. [`verify-image-signature.yaml`](verify-image-signature.yaml) checks signatures before deploy at admission time. `rollout.yaml` pins the backend to a specific `sha256` digest rather than a mutable tag, so what's running in the cluster is exactly what got scanned and signed — nothing swapped in after the fact. 🔍
 
-![Docker build summary — backend](docs/screenshots/docker-build-backend-signed.png)
+![Docker build summary — backend](docs/screenshots/12-docker-build-backend.png)
 *Signed build record for the backend image, no secrets leaked.*
 
-![Docker build summary — frontend](docs/screenshots/docker-build-frontend-signed.png)
+![Docker build summary — frontend](docs/screenshots/13-docker-build-frontend.png)
 *Signed build record for the frontend image.*
 
 ---
@@ -119,7 +119,7 @@ Both images are built, pushed, and **signed with Cosign** ✍️ in the `docker-
 
 The Grafana dashboard **"DevBoard – DORA Metrics"** pulls from three sources: the pushgateway (deploy events), the ingress-nginx controller (request success/failure), and Argo Rollouts (phase transitions). Together they cover all four DORA metrics — deploy frequency, lead time, change failure rate, and MTTR via rollout phase duration. 🎯
 
-![Live app](docs/screenshots/live-app-dashboard.png)
+![Live app](docs/screenshots/14-live-app.png)
 *The deployed app itself, confirming the whole chain — build, sign, scan, deploy, canary — ends in something that actually works.*
 
 ---
