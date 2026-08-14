@@ -61,6 +61,13 @@ devboard-gitops/
 ├── .gitattributes                    # Marks *.png as binary (prevents CRLF corruption)
 └── README.md
 ```
+---
+ 
+## 🏗️ Architecture
+ 
+![DevBoard architecture](docs/screenshots/architecture.png)
+*Code push → CI (build, scan, sign) → GitOps repo → ArgoCD sync → canary rollout via nginx, gated by Kyverno at admission and Prometheus-driven rollback via Argo Rollouts → Grafana + live traffic.*
+ 
 
 ---
 
