@@ -16,24 +16,50 @@ This README maps each of the six checklist items to the actual manifest behind i
 
 ---
 
-## 🗂️ Repo layout (relevant bits)
-
+## 🗂️ Repo Structure
+ 
 ```
-devboard/
-├── rollout.yaml              # Argo Rollouts canary strategy + pod securityContext
-├── analysistemplate.yaml     # Prometheus-backed analysis gate, triggers rollback
-├── service.yaml               # backend Service
-├── service-account.yaml
-├── postgres-statefulset.yaml
-├── postgres-service.yaml
-├── frontend-deployment.yml
-├── frontend-service.yml
-├── frontend-hpa.yml
-├── external-secret.yaml
-├── namespace.yaml
-├── intern-role.yml / intern-role-binding.yml
-└── kyverno/                   # cluster-side policy-as-code
-verify-image-signature.yaml    # admission-time Cosign signature check
+devboard-gitops/
+├── apps/                            # ArgoCD Application manifests (app-of-apps entrypoints)
+│   ├── devboard.yaml                 # Points ArgoCD at devboard/
+│   ├── kyverno.yaml                  # Points ArgoCD at kyverno/
+│   └── observability.yaml            # Points ArgoCD at observability/
+│
+├── devboard/                        # Everything that makes up the running DevBoard app
+│   ├── namespace.yaml
+│   ├── service-account.yaml
+│   ├── admin-role.yaml
+│   ├── intern-role.yaml
+│   ├── intern-role-binding.yaml
+│   ├── configMap.yaml
+│   ├── external-secret.yaml          # Pulls secrets in via External Secrets Operator
+│   ├── db-rotator.yaml
+│   ├── postgres-statefulset.yaml
+│   ├── postgres-service.yaml
+│   ├── postgres-init.yaml
+│   ├── rollout.yaml                  # Argo Rollouts canary strategy + pod securityContext
+│   ├── analysistemplate.yaml         # Prometheus-backed analysis gate, triggers rollback
+│   ├── service.yaml                  # Backend Service
+│   ├── frontend-deployment.yaml
+│   ├── frontend-service.yaml
+│   ├── frontend-hpa.yaml
+│   └── frontend-ingress.yaml
+│
+├── kyverno/                          # Cluster-side policy-as-code
+│   ├── pod-security-baseline.yaml
+│   └── verify-image-signature.yaml   # Admission-time Cosign signature check
+│
+├── observability/                    # Metrics plumbing for the DORA dashboard
+│   ├── argo-rollouts-metrics-service.yaml
+│   ├── argo-rollouts-servicemonitor.yaml
+│   ├── dora-dashboard-configmap.yaml
+│   └── pushgateway-ingress.yaml
+│
+├── docs/
+│   └── screenshots/                  # 14 numbered screenshots referenced below (1.png – 14.png)
+│
+├── .gitattributes                    # Marks *.png as binary (prevents CRLF corruption)
+└── README.md
 ```
 
 ---
