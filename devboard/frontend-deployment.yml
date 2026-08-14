@@ -15,11 +15,24 @@ spec:
       labels:
         app: devboard-frontend
     spec:
+      # Required by our own Kyverno disallow-privileged-and-root policy.
+      # Same pattern as the backend Rollout: DHI/distroless images use a
+      # numeric nonroot UID (65532) that k8s can't verify from a named
+      # user, so it must be set explicitly.
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: devboard-frontend
           image: saadhussain07/devboard-frontend:ace02002247b93b287b40202be5fa5842bde00d6
           ports:
             - containerPort: 4173
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
           resources:
             requests: # min needed
               cpu: 10m
