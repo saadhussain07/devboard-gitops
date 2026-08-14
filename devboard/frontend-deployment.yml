@@ -26,7 +26,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: devboard-frontend
-          image: saadhussain07/devboard-frontend:05c12a445d85d584915aa8370c4415fea1b5d550
+          image: saadhussain07/devboard-frontend:28f147152eb6e0e846ca3fc4afaf59bb05863b27
           ports:
             - containerPort: 4173
           securityContext:
