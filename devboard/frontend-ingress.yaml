@@ -1,0 +1,23 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: devboard-frontend-ingress
+  namespace: devboard
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts: ["devboard.15-252-151-45.sslip.io"]
+      secretName: devboard-frontend-tls
+  rules:
+    - host: "devboard.15-252-151-45.sslip.io"
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: devboard-frontend-service
+                port:
+                  number: 8080
